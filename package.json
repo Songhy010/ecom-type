@@ -1,0 +1,30 @@
+{
+  "name": "ecom",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev:server": "ts-node ./src/index.ts",
+    "dev:worker": "ts-node ./src/index-worker.ts",
+    "dev": "concurrently npm:dev:*",
+    "build": "tsc",
+    "start:server": "node ./dist/index.js",
+    "start:worker": "node ./dist/index-worker.js",
+    "start": "concurrently npm:start:*",
+    "migration:generate": "ts-node migration generate",
+    "migration:run": "ts-node migration run",
+    "migration:revert": "ts-node migration revert"
+  },
+  "dependencies": {
+    "@vendure/admin-ui-plugin": "1.9.5",
+    "@vendure/asset-server-plugin": "1.9.5",
+    "@vendure/core": "1.9.5",
+    "@vendure/email-plugin": "1.9.5",
+    "dotenv": "16.0.3",
+    "mysql": "2.18.1",
+    "typescript": "4.3.5"
+  },
+  "devDependencies": {
+    "concurrently": "8.0.1",
+    "ts-node": "10.9.1"
+  }
+}
