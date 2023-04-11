@@ -1,19 +1,28 @@
-import { Controller, Get , Post} from '@nestjs/common';
-import { Ctx, CustomerService,UserService, RequestContext } from '@vendure/core'; 
+import { Controller, Get, Post, UseFilters, HttpException, HttpStatus } from '@nestjs/common';
+import { Ctx, CustomerService,UserService, RequestContext, AuthService } from '@vendure/core'; 
 import { CreateCustomerInput } from '@vendure/common/lib/generated-types';
+import { JwtService } from '@nestjs/jwt';
+import { CustomExceptionFilter } from '../util/custom-exception.filter';
+
 
 @Controller('rest-api/auth')
 export class AuthController {
   constructor(
+    private jwtService: JwtService,
     private customerService: CustomerService,
-    private userService: UserService) 
-    {}
+    private userService: UserService) {}
 
   @Get('login')
+  @UseFilters(new CustomExceptionFilter())
   login(@Ctx() ctx: RequestContext){
-    console.log(ctx.req?.body.username);
-    var param = ctx.req?.body
-    return this.userService.getUserByEmailAddress(ctx,param.username,"customer")
+    try {
+      console.log(ctx.req?.body.username);
+      var param = ctx.req?.body
+      const jwt = this.jwtService.signAsync({id:param.username})
+      return jwt;
+    } catch (error) {
+      throw new HttpException('unexpected error',HttpStatus.INTERNAL_SERVER_ERROR);
+    }
   }
 
   @Post('register')
