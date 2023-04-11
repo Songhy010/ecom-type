@@ -15,7 +15,6 @@ export class ProductsController {
   @Get()
   @UseFilters(new CustomExceptionFilter)
   @UseGuards(AuthGuard)
-  @UseFilters()
   async findAll(@Ctx() ctx: RequestContext) {
     try {
       return this.productService.findAll(ctx);

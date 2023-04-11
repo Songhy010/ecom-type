@@ -20,7 +20,6 @@ export class AuthController {
       var param = ctx.req?.body
       const jwt = this.jwtService.signAsync({id:param.username})
       return jwt;
-      throw new HttpException('unexpected error',HttpStatus.INTERNAL_SERVER_ERROR);
     } catch (error) {
       throw new HttpException('unexpected error',HttpStatus.NOT_FOUND);
     }
