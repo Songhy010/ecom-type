@@ -1,7 +1,8 @@
-import { Controller, Get, UseFilters, HttpException, HttpStatus } from '@nestjs/common';
+import { Controller, Get, UseFilters, HttpException, HttpStatus,UseGuards } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { Ctx, ProductService, RequestContext } from '@vendure/core'; 
 import { CustomExceptionFilter } from '../util/custom-exception.filter';
+import { AuthGuard } from '../util/auth.guard';
 
 
 
@@ -13,12 +14,13 @@ export class ProductsController {
 
   @Get()
   @UseFilters(new CustomExceptionFilter)
-  findAll(@Ctx() ctx: RequestContext) {
+  @UseGuards(AuthGuard)
+  @UseFilters()
+  async findAll(@Ctx() ctx: RequestContext) {
     try {
       return this.productService.findAll(ctx);
-     //throw new HttpException('unexpected error',HttpStatus.INTERNAL_SERVER_ERROR);
     } catch (error) {
-      throw new HttpException('unexpected error',HttpStatus.INTERNAL_SERVER_ERROR);
+      throw new HttpException('INTERNAL_SERVER_ERROR',HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 }
