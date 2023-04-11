@@ -1,8 +1,9 @@
-import { Controller, Get, Post, UseFilters, HttpException, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Post, UseFilters, HttpException, HttpStatus} from '@nestjs/common';
 import { Ctx, CustomerService,UserService, RequestContext, AuthService } from '@vendure/core'; 
 import { CreateCustomerInput } from '@vendure/common/lib/generated-types';
 import { JwtService } from '@nestjs/jwt';
 import { CustomExceptionFilter } from '../util/custom-exception.filter';
+import Utils from '../util/util'
 
 
 @Controller('rest-api/auth')
@@ -14,12 +15,17 @@ export class AuthController {
 
   @Get('login')
   @UseFilters(new CustomExceptionFilter())
-  login(@Ctx() ctx: RequestContext){
+  async login(@Ctx() ctx: RequestContext){
     try {
-      console.log(ctx.req?.body.username);
+      //console.log(ctx.req?.body.username);
       var param = ctx.req?.body
-      const jwt = this.jwtService.signAsync({id:param.username})
-      return jwt;
+      const jwt = await this.jwtService.signAsync({id:param.username})
+
+      return Utils.response({
+        access_token:jwt,
+        refresh_token:"comming soon",
+        expire_in:"comming soon"
+      },HttpStatus.OK);
     } catch (error) {
       throw new HttpException('unexpected error',HttpStatus.NOT_FOUND);
     }

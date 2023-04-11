@@ -1,6 +1,6 @@
 import { Controller, Get, UseFilters, HttpException, HttpStatus,UseGuards } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { Ctx, ProductService, RequestContext } from '@vendure/core'; 
+import { Ctx, ListQueryOptions,Product, ProductService, RequestContext, SortParameter } from '@vendure/core'; 
 import { CustomExceptionFilter } from '../util/custom-exception.filter';
 import { AuthGuard } from '../util/auth.guard';
 
@@ -17,7 +17,19 @@ export class ProductsController {
   @UseGuards(AuthGuard)
   async findAll(@Ctx() ctx: RequestContext) {
     try {
-      return this.productService.findAll(ctx);
+      let listQuery : ListQueryOptions<Product> = {
+        take:5,
+        skip:0,
+        sort:{
+          name:'ASC'
+        },
+        filter:{
+          name:{
+            eq:"Laptop"
+          }
+        }
+      }
+      return this.productService.findAll(ctx,listQuery);
     } catch (error) {
       throw new HttpException('INTERNAL_SERVER_ERROR',HttpStatus.INTERNAL_SERVER_ERROR);
     }
