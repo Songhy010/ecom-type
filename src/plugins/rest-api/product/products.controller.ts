@@ -29,6 +29,7 @@ export class ProductsController {
           }
         }
       }
+      
       return this.productService.findAll(ctx,listQuery);
     } catch (error) {
       throw new HttpException('INTERNAL_SERVER_ERROR',HttpStatus.INTERNAL_SERVER_ERROR);

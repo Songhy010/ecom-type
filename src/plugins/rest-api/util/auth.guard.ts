@@ -9,6 +9,7 @@ import {
   import { JwtService } from '@nestjs/jwt';
   import { Request } from 'express';
 import { CustomExceptionFilter } from './custom-exception.filter';
+import { SessionService } from '@vendure/core';
   
   @Injectable()
 
@@ -33,6 +34,9 @@ import { CustomExceptionFilter } from './custom-exception.filter';
         // so that we can access it in our route handlers
         request['user'] = payload;
       } catch {
+       // const payload = await this.jwtService.decode(token)
+        //const ses = payload.ses
+        //console.log(ses)
         throw new HttpException('UNAUTHORIZED',HttpStatus.UNAUTHORIZED);
       }
       return true;
