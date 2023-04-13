@@ -1,5 +1,5 @@
 import { Controller,Request, Get, Post, UseFilters, HttpException, HttpStatus, UseGuards} from '@nestjs/common';
-import { Ctx, CustomerService,UserService, RequestContext, AuthService, SessionService, CachedSession, AuthGuard } from '@vendure/core'; 
+import { Ctx, CustomerService,UserService, RequestContext, AuthService, SessionService, CachedSession, AuthGuard, TransactionalConnection, NativeAuthenticationMethod } from '@vendure/core'; 
 import { CreateCustomerInput } from '@vendure/common/lib/generated-types';
 import { JwtService } from '@nestjs/jwt';
 import { CustomExceptionFilter } from '../util/custom-exception.filter';
@@ -10,6 +10,7 @@ import {Payload,RequestPayload} from '../util/constant'
 @Controller('rest-api/auth')
 export class AuthController {
   constructor(
+    private transactionalConnection: TransactionalConnection,
     private authService: AuthService,
     private sessionService: SessionService,
     private jwtService: JwtService,
@@ -75,10 +76,16 @@ export class AuthController {
   @Post('add_auth_method')
   @UseFilters(new CustomExceptionFilter)
   @UseGuards(AuthGuard)
-  getProfile(@Ctx() ctx :RequestContext) {
+  async getProfile(@Ctx() ctx :RequestContext) {
     try {
       const req = ctx.req as any
+      const entity = new NativeAuthenticationMethod
+        
+      
+      await this.transactionalConnection.getRepository(ctx, NativeAuthenticationMethod).save(entity);
+
       return req.user
+
     } catch (error) {
       throw error
     }
