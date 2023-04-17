@@ -5,12 +5,13 @@ import { Ctx,
   UserService, 
   RequestContext, 
   AuthService, 
-  SessionService, CachedSession, AuthGuard, TransactionalConnection, NativeAuthenticationMethod, User } from '@vendure/core'; 
+  SessionService, CachedSession } from '@vendure/core'; 
 import { CreateCustomerInput } from '@vendure/common/lib/generated-types';
 import { JwtService } from '@nestjs/jwt';
 import { CustomExceptionFilter } from '../util/custom-exception.filter';
 import Utils from '../util/util'
-import {Payload,RequestPayload} from '../util/constant'
+import {Payload} from '../util/constant'
+import { AuthGuard } from '../util/auth.guard';
 
 
 @Controller('rest-api/auth')
@@ -42,7 +43,7 @@ export class AuthController {
   
         return Utils.response({
           access_token:jwt,
-          expire_in:"comming soon"
+          expire_in:"24h"
         },HttpStatus.OK);
       }else{
         throw new HttpException('NOT_FOUND',HttpStatus.NOT_FOUND);
@@ -68,9 +69,8 @@ export class AuthController {
       const jwt = await this.jwtService.signAsync(payload)
 
       return Utils.response({
-        payload:jwtDecode,
         access_token:jwt,
-        expire_in:"comming soon"
+        expire_in:"24h"
       },HttpStatus.OK);
     } catch (error) {
       throw error
@@ -78,15 +78,39 @@ export class AuthController {
   }
 
   @Post('register')
-  register(@Ctx() ctx: RequestContext){
-    let input : CreateCustomerInput = {
-      title : "",
-      firstName : "",
-      lastName : "",
-      phoneNumber:"",
-      emailAddress:"simassi.s@gmail.com"
+  @UseFilters(new CustomExceptionFilter)
+  async register(@Ctx() ctx: RequestContext){
+    try {
+      const param = ctx.req?.body
+      //console.log(param)
+      if(!param.identifier || !param.password){
+        throw new HttpException("BAD_REQUEST",HttpStatus.BAD_REQUEST)
+      }
+      const user = await this.userService.getUserByEmailAddress(ctx,param.identifier)
+      if(user){
+        throw new HttpException("CONFLICT",HttpStatus.CONFLICT)
+      }
+      let input : CreateCustomerInput = {
+        title : "",
+        firstName : "",
+        lastName : "",
+        phoneNumber:"",
+        emailAddress:param.identifier
+      }
+      const customer = await this.customerService.create(ctx,input,param.password) as any
+      const jwt = await Utils.generateToken(ctx,
+        this.sessionService,
+        this.userService,
+        this.jwtService,
+        customer.user.identifier,
+        'native')
+      return Utils.response({ 
+        access_token:jwt,
+        expire_in:"24h"}
+        ,HttpStatus.OK)
+    } catch (error) {
+      throw error
     }
-    return this.customerService.create(ctx,input,"12345678")
   }
 
   @Post('social_login')
@@ -96,25 +120,35 @@ export class AuthController {
       const param = ctx.req?.body
       let existingUser = await this.externalAuthenticationService.findCustomerUser(ctx, param.method, param.identifier);
       if(existingUser){
-        const userRole = await this.userService.getUserByEmailAddress(ctx,existingUser.identifier)
-        const session = await this.sessionService.createNewAuthenticatedSession(ctx,userRole!,param.method)
-        const payload = { identifier: existingUser?.identifier, sub: existingUser?.id, ses: session?.token};
-        const jwt = await this.jwtService.signAsync(payload)
+        const jwt = await Utils.generateToken(ctx,
+          this.sessionService,
+          this.userService,
+          this.jwtService,
+          existingUser.identifier,
+          param.method)
         return Utils.response({ 
-          access_token:jwt,
-          expire_in:"comming soon"}
+          access_token: jwt,
+          expire_in:"24h"}
           ,HttpStatus.OK)
       }
       existingUser = await this.externalAuthenticationService.createCustomerAndUser(ctx, {
         strategy: param.method,
         externalIdentifier: param.identifier,
-        verified: false,
+        verified: true,
         emailAddress: param.identifier,
         firstName: "",
         lastName: "",
       });
-
-      return Utils.response(existingUser,HttpStatus.OK)
+      const jwt = await Utils.generateToken(ctx,
+        this.sessionService,
+        this.userService,
+        this.jwtService,
+        existingUser.identifier,
+        param.method)
+      return Utils.response({ 
+        access_token:jwt,
+        expire_in:"24h"}
+        ,HttpStatus.OK)
     } catch (error) {
       throw error
     }
@@ -134,7 +168,7 @@ export class AuthController {
       const user = await this.externalAuthenticationService.createCustomerAndUser(ctx, {
         strategy: param.method,
         externalIdentifier: param.identifier,
-        verified: false,
+        verified: true,
         emailAddress: tokenPayload.user.identifier,
         firstName: "",
         lastName: "",
