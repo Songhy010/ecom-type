@@ -1,5 +1,11 @@
-import { Controller,Request, Get, Post, UseFilters, HttpException, HttpStatus, UseGuards} from '@nestjs/common';
-import { Ctx, CustomerService,UserService, RequestContext, AuthService, SessionService, CachedSession, AuthGuard, TransactionalConnection, NativeAuthenticationMethod } from '@vendure/core'; 
+import { Controller, Get, Post, UseFilters, HttpException, HttpStatus, UseGuards} from '@nestjs/common';
+import { Ctx, 
+  ExternalAuthenticationService,
+  CustomerService,
+  UserService, 
+  RequestContext, 
+  AuthService, 
+  SessionService, CachedSession, AuthGuard, TransactionalConnection, NativeAuthenticationMethod, User } from '@vendure/core'; 
 import { CreateCustomerInput } from '@vendure/common/lib/generated-types';
 import { JwtService } from '@nestjs/jwt';
 import { CustomExceptionFilter } from '../util/custom-exception.filter';
@@ -10,7 +16,7 @@ import {Payload,RequestPayload} from '../util/constant'
 @Controller('rest-api/auth')
 export class AuthController {
   constructor(
-    private transactionalConnection: TransactionalConnection,
+    private externalAuthenticationService: ExternalAuthenticationService,
     private authService: AuthService,
     private sessionService: SessionService,
     private jwtService: JwtService,
@@ -31,7 +37,7 @@ export class AuthController {
       const verify = await this.authService.verifyUserPassword(ctx,user!.id,param.password)
       if(verify === true){
         const session = await this.sessionService.createNewAuthenticatedSession(ctx,user!,"native")
-        const payload = { username: user?.identifier, sub: user?.id,ses:session?.token};
+        const payload = { identifier: user?.identifier, sub: user?.id, ses: session?.token};
         const jwt = await this.jwtService.signAsync(payload)
   
         return Utils.response({
@@ -58,7 +64,7 @@ export class AuthController {
         throw new HttpException('UNAUTHORIZED',HttpStatus.UNAUTHORIZED);
       }
       
-      const payload = { username: session?.user?.identifier, sub: session?.user?.id,ses:session?.token};
+      const payload = { identifier: session?.user?.identifier, sub: session?.user?.id,ses:session?.token};
       const jwt = await this.jwtService.signAsync(payload)
 
       return Utils.response({
@@ -66,26 +72,6 @@ export class AuthController {
         access_token:jwt,
         expire_in:"comming soon"
       },HttpStatus.OK);
-    } catch (error) {
-      throw error
-    }
-  }
-
-
-
-  @Post('add_auth_method')
-  @UseFilters(new CustomExceptionFilter)
-  @UseGuards(AuthGuard)
-  async getProfile(@Ctx() ctx :RequestContext) {
-    try {
-      const req = ctx.req as any
-      const entity = new NativeAuthenticationMethod
-        
-      
-      await this.transactionalConnection.getRepository(ctx, NativeAuthenticationMethod).save(entity);
-
-      return req.user
-
     } catch (error) {
       throw error
     }
@@ -101,5 +87,62 @@ export class AuthController {
       emailAddress:"simassi.s@gmail.com"
     }
     return this.customerService.create(ctx,input,"12345678")
+  }
+
+  @Post('social_login')
+  @UseFilters(new CustomExceptionFilter)
+  async socialLogin(@Ctx() ctx :RequestContext){
+    try {
+      const param = ctx.req?.body
+      let existingUser = await this.externalAuthenticationService.findCustomerUser(ctx, param.method, param.identifier);
+      if(existingUser){
+        const userRole = await this.userService.getUserByEmailAddress(ctx,existingUser.identifier)
+        const session = await this.sessionService.createNewAuthenticatedSession(ctx,userRole!,param.method)
+        const payload = { identifier: existingUser?.identifier, sub: existingUser?.id, ses: session?.token};
+        const jwt = await this.jwtService.signAsync(payload)
+        return Utils.response({ 
+          access_token:jwt,
+          expire_in:"comming soon"}
+          ,HttpStatus.OK)
+      }
+      existingUser = await this.externalAuthenticationService.createCustomerAndUser(ctx, {
+        strategy: param.method,
+        externalIdentifier: param.identifier,
+        verified: false,
+        emailAddress: param.identifier,
+        firstName: "",
+        lastName: "",
+      });
+
+      return Utils.response(existingUser,HttpStatus.OK)
+    } catch (error) {
+      throw error
+    }
+  }
+
+  @Post('social_connect')
+  @UseFilters(new CustomExceptionFilter)
+  @UseGuards(AuthGuard)
+  async connectSocial(@Ctx() ctx :RequestContext) {
+    try {
+      const tokenPayload = ctx.req as any
+      const param = ctx.req?.body
+      const existingUser = await this.externalAuthenticationService.findCustomerUser(ctx, param.method, param.identifier);
+      if(existingUser){
+        throw new HttpException("CONFLICT",HttpStatus.CONFLICT)
+      }
+      const user = await this.externalAuthenticationService.createCustomerAndUser(ctx, {
+        strategy: param.method,
+        externalIdentifier: param.identifier,
+        verified: false,
+        emailAddress: tokenPayload.user.identifier,
+        firstName: "",
+        lastName: "",
+      });
+
+      return Utils.response(user,HttpStatus.OK)
+    } catch (error) {
+      throw error
+    }
   }
 }
