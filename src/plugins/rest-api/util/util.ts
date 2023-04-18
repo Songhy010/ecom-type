@@ -23,4 +23,6 @@ export default class Utils {
        const payload = { identifier: user?.identifier, sub: user?.id, ses: sess?.token};
        return await jwtService.signAsync(payload);
     }
+
+    
 }

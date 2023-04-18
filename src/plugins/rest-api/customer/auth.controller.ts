@@ -29,7 +29,7 @@ export class AuthController {
   async login(@Ctx() ctx: RequestContext){
     try {
       var param = ctx.req?.body
-      const user = await this.userService.getUserByEmailAddress(ctx,param.username)
+      const user = await this.userService.getUserByEmailAddress(ctx,param.identifier)
       
       if(!user){
         throw new HttpException('NOT_FOUND',HttpStatus.NOT_FOUND);

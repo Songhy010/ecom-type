@@ -17,19 +17,6 @@ export class ProductsController {
   @UseGuards(AuthGuard)
   async findAll(@Ctx() ctx: RequestContext) {
     try {
-      // let listQuery : ListQueryOptions<Product> = {
-      //   take:5,
-      //   skip:0,
-      //   sort:{
-      //     name:'ASC'
-      //   },
-      //   filter:{
-      //     slug:{
-      //       contains:"lap"
-      //     }
-      //   }
-      // }
-
       let listQuery : ListQueryOptions<Product> = ctx.req?.body
       
       return this.productService.findAll(ctx,listQuery);
